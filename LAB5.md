@@ -309,7 +309,13 @@ Daarna het commando geven met de juiste url.
 ## Part 2
 Cisco DEVNET 3.5.7
 
-Dit moet niet onmiddellijk doen.
+### 5.2.1
+Launch DEVASC vm
+
+### 5.2.2
+
+### 5.2.3
+
 
 ## Part 3
 Cisco DEVNET 3.6.6
@@ -340,5 +346,98 @@ The test-option contains: set
 ```
 
 ### 5.3.3 Parse JSON in Python
+Er wordt gevraagd de code hieronder toe te voegen aan parsejson.py
+```python
+import json
+import yaml
 
+with open('myfile.json','r') as json_file:
+    ourjson = json.load(json_file)
+print(ourjson)
+```
+output python3 parsejson.py:
+```bash
+devasc@labvm:~/labs/devnet-src/parsing$ python3 parsejson.py 
+{'access_token': 'ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3', 'expires_in': 1209600, 'refresh_token': 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTEyMzQ1Njc4', 'refreshtokenexpires_in': 7776000}
+```
+
+De volgende lijnen werden toegevoegd aan de python file:
+```python
+print("The access token is: {}".format(ourjson['access_token']))
+print("The token expires in {} seconds".format(ourjson['expires_in']))
+```
+
+Het script heeft nu extra output:
+```bash
+The access token is: ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3
+The token expires in 1209600 seconds
+```
+
+We kunnen nu de output parsen naar een yaml-formaat. Hiervoor werd de volgende lijnen toegevoegd:
+```python
+print("\n\n---") #dit print 2 lege lijnen, gevolgd door ---
+print(yaml.dump(ourjson))
+```
+
+De volledige output van het programma nu:
+```
+{'access_token': 'ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3', 'expires_in': 1209600, 'refresh_token': 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTEyMzQ1Njc4', 'refreshtokenexpires_in': 7776000}
+The access token is: ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3
+The token expires in 1209600 seconds
+
+
+---
+access_token: ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3
+expires_in: 1209600
+refresh_token: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTEyMzQ1Njc4
+refreshtokenexpires_in: 7776000
+```
 ### 5.3.4 Parse YAML in Python
+
+De volgende code werd toegevoegd aan parseyaml.py
+```python
+mport json
+import yaml
+
+with open("myfile.yaml','r') as yaml_file:
+    ouryaml = yaml.safe_load(yaml_file)
+print(ouryaml)
+```
+
+Hier ben ik een klein probleem tegengekomen. Zoals je hierboven ziet heb ik na de open begonnen met een dubbele quote en geëindigd met een enkele quote. 
+
+Na de aanpassing krijg ik de volgende output:
+```bash
+devasc@labvm:~/labs/devnet-src/parsing$ python3 parseyaml.py 
+{'access_token': 'ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3', 'expires_in': 1209600, 'refresh_token': 'MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTEyMzQ1Njc4', 'refreshtokenexpires_in': 7776000}
+```
+
+Ook nu wordt er gevraagd 2 lijnen toe te voegen:
+```python
+print("The access token is {}".format(ouryaml['access_token']))
+print("The token expires in {} seconds.".format(ouryaml['expires_in']))
+```
+
+De extra output is:
+```
+The access token is ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3
+The token expires in 1209600 seconds.
+
+```
+
+Nu gaan we de yaml data parsen naar json:
+```python
+print("\n\n")
+print(json.dumps(ouryaml, indent=4))
+```
+
+De extra output (na 2 lege lijnen):
+```
+{
+    "access_token": "ZDI3MGEyYzQtNmFlNS00NDNhLWFlNzAtZGVjNjE0MGU1OGZmZWNmZDEwN2ItYTU3",
+    "expires_in": 1209600,
+    "refresh_token": "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTEyMzQ1Njc4",
+    "refreshtokenexpires_in": 7776000
+}
+
+```
