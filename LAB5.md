@@ -319,6 +319,25 @@ Start de DEVASC VM op
 ### 5.3.2 Parse XML in python
 In ~/labs/devnet-src/parsing bevinding zich 2 files i.v.m. xml. myfile.xml en parsexml.py.
 
+parsexml.py is zo goed als leeg (buiten een comment). Er wordt gevraagd de volgende code toe te voegen:
+```python
+import xml.etree.ElementTree as ET
+import re
+xml = ET.parse("myfile.xml")
+root = xml.getroot()
+ns = re.match('{.*}', root.tag).group(0)
+editconf = root.find("{}edit-config".format(ns))
+defop = editconf.find("{}default-operation".format(ns))
+testop = editconf.find("{}test-option".format(ns))
+print("The default-operation contains: {}".format(defop.text))
+print("The test-option contains: {}".format(testop.text))
+```
+Ik kreeg de volgende output:
+```bash
+devasc@labvm:~/labs/devnet-src/parsing$ python3 parsexml.py 
+The default-operation contains: merge
+The test-option contains: set
+```
 
 ### 5.3.3 Parse JSON in Python
 
