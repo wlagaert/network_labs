@@ -285,3 +285,238 @@ Na het uitvoeren krijg ik dit resultaat in de running config van de router:
 
 ## 7.4 - Use RESTCONF to access an IOS XE Device
 Cisco DEVNET 8.3.7
+
+### Part 1 - controle connectie tussen vm's
+
+Reeds gebeurd in 7.3
+
+### Part 2 - Configure IOS XE device for RESTCONF access
+
+Verify RESTCONF daemons are running:
+```bash
+show platform software yang-management process
+```
+
+enable RESTCONF
+```bash
+conf t
+restconf
+```
+enable & verify HTTPS service
+```bash
+conf t
+ip http secure-server
+ip http authentication local
+```
+
+Je kan nog eens controleren welke daemons aan moeten staan. Voor RESTCONF moet nginx (de http server) aan staan.
+
+### Part 3 - Open and Configure Postman
+
+Na openen postman SSL cert verification uit zetten
+File --> Settings --> General
+
+### Part 4 - Use Postman to Send GET Requests
+
+In het veld naast get de url `https://192.168.56.101/restconf/` invullen. Daarna bij Authorization kiezen voor `basic auth` kiezen en dan login en paswoord invullen.
+
+![](images/7-6.png)
+
+Daarna moet `headers` aanpassingen gebeuren zodat we de data in json formaat ontvangen.
+
+![](images/7-7.png)
+
+
+Het antwoord van de router:
+```json
+{
+    "ietf-restconf:restconf": {
+        "data": {},
+        "operations": {},
+        "yang-library-version": "2016-06-21"
+    }
+}
+```
+
+#### Use GET request to gather information about all interfaces
+De tab die we zojuist hebben aangemaakt gaat als template dienen voor andere requests. Daarom maken we eerst een kopie van het tabblad.
+
+In de kopie wordt de url aangepast. Om informatie over de interfaces te ontvangen gebruiken we yet yang-model ietf-interfaces
+
+url: `https://192.168..56.101/restconf/data/ietf-interfaces:interfadces`
+
+het antwoord dat we dan krijgen als we op send klikken:
+```json
+{
+    "ietf-interfaces:interfaces": {
+        "interface": [
+            {
+                "name": "GigabitEthernet1",
+                "description": "VBox",
+                "type": "iana-if-type:ethernetCsmacd",
+                "enabled": true,
+                "ietf-ip:ipv4": {},
+                "ietf-ip:ipv6": {}
+            }
+        ]
+    }
+}
+```
+
+Nu gaan we de informatie van een specifieke interface opvragen. Aan de url wordt `interface=GigabitEthernet1` toegevoegd. (Ook nu kan je beter een duplicate maken van de tab)
+
+het resultaat:
+```json
+{
+    "ietf-interfaces:interface": {
+        "name": "GigabitEthernet1",
+        "description": "VBox",
+        "type": "iana-if-type:ethernetCsmacd",
+        "enabled": true,
+        "ietf-ip:ipv4": {},
+        "ietf-ip:ipv6": {}
+    }
+}
+```
+
+Bij ipv4 is er geen ip-adres ingevuld. Dit is omdat de interface een ip-adres krijgt van een DHCP-server. Hetgeen hierboven staat wordt uitgelezen uit de running config.
+
+Nu gaan we op de router hetzelfde ip-adres manueel configureren. Als we dan dezelfde request opnieuw uitvoeren krijgen we wel het ip-adres te zien.
+
+```json
+{
+    "ietf-interfaces:interface": {
+        "name": "GigabitEthernet1",
+        "description": "VBox",
+        "type": "iana-if-type:ethernetCsmacd",
+        "enabled": true,
+        "ietf-ip:ipv4": {
+            "address": [
+                {
+                    "ip": "192.168.56.101",
+                    "netmask": "255.255.255.0"
+                }
+            ]
+        },
+        "ietf-ip:ipv6": {}
+    }
+}
+```
+
+### Part 5 - Use Postman to Send a PUT request
+
+We maken een duplicaat van de laatste tab. We veranderen `get` naar `put`. De interface in de url wordt veranderd naar `Loopback1`
+
+Om te specifiëren wat we aanmaken op de switch moeten we de body veranderen. In het body-tabblad klikken op raw en controleren dat het formaat json is.
+
+De volgende json wordt toegevoegd aan de body:
+```json
+{
+    "ietf-interfaces:interface": {
+        "name": "Loopback1",
+        "description": "My first RESTCONF loopback",
+        "type": "iana-if-type:softwareLoopback",
+        "enabled": true,
+        "ietf-ip:ipv4": {
+            "address": [
+                {
+                    "ip": "10.1.1.1",
+                    "netmask": "255.255.255.0"
+                }
+            ]
+        },
+        "ietf-ip:ipv6": {}
+    }
+}
+```
+
+Na het verzenden krijg je een leeg antwoord. Rechts in postman is wel een response code: `201 created`.
+
+![](images/7-8.png)
+
+Op de router kunnen we controleren op de interface is aangemaakt met 'show ip int brief'.
+
+### Part 6 - Use a Python script to Send GET Requests
+
+Er wordt een script aangemaakt om een get-request te verzenden
+```python
+import json
+import requests
+requests.packages.urllib3.disable_warnings()
+
+#url die wordt gebruikt voor de get request
+api_url = "https://192.168.56.101/restconf/data/ietf-interfaces:interfaces"
+
+
+#variabele met de headers van het formaat dat geacepteerd word
+headers = { "Accept": "application/yang-data+json",
+           "Content-type":"application/yang-data+json"
+           
+           }
+#variabele met login en paswoord
+basicauth = ("cisco", "cisco123!")
+
+#variable to send request and store response
+resp = requests.get(api_url,auth=basicauth, headers=headers, verify=False)
+
+#de response code wordt afgeprint
+print(resp)
+
+#om de inhoud te bekijken in json-formaat
+response_json = resp.json()
+print(response_json)
+
+#aangezien die uitvoer van de json niet mooi is wordt hetvolgende gedaan
+print("Mooie print van json!")
+print("---------------------")
+
+print(json.dumps(response_json,indent=4))
+```
+
+### Part 7 - Use a Python script to send PUT Requests
+Het volgende script werd gemaakt om een PUT request te verzenden:
+```python
+import json
+import requests
+requests.packages.urllib3.disable_warnings()
+
+#url die wordt gebruikt voor de get request
+api_url = "https://192.168.56.101/restconf/data/ietf-interfaces:interfaces/interface=Loopback2"
+
+
+#variabele met de headers van het formaat dat geacepteerd word
+headers = { "Accept": "application/yang-data+json",
+           "Content-type":"application/yang-data+json"
+           
+           }
+#variabele met login en paswoord
+basicauth = ("cisco", "cisco123!")
+
+#een python dictionary met de data die de nieuwe interface zal aanmaken
+yangConfig = {
+    "ietf-interfaces:interface": {
+        "name": "Loopback2",
+        "description": "My second RESTCONF loopback",
+        "type": "iana-if-type:softwareLoopback",
+        "enabled": True,
+        "ietf-ip:ipv4": {
+            "address": [
+                {
+                    "ip": "10.2.1.1",
+                    "netmask": "255.255.255.0"
+                }
+            ]
+        },
+        "ietf-ip:ipv6": {}
+        }
+}
+
+#a variable to send te put request and store the response
+resp = requests.put(api_url,data=json.dumps(yangConfig), auth=basicauth,headers=headers,verify=False)
+
+#er wordt getest of de ressponse code goed is. Dan wordt het antwooord normaal afgeprint. Anders als error bericht.
+if(resp.status_code >= 200 and resp.status_code <= 299) :
+    print("STATUS OK: {}".format(resp.status_code))
+else:
+    print("ERROR. STATUS Code: {} \nError Message: {}".format(resp.status_code,resp.json()))
+```
